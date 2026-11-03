@@ -4,11 +4,12 @@
   const $ = id => document.getElementById(id);
   const MAX = 16 * 1024 * 1024;
   const INPUT_MAX = MAX + 6000;
-  let file = null, busy = false, url = null;
+  let file = null, busy = false, url = null, cancel = null;
   function log(msg, cls) {
     const d = document.createElement("div");
     d.className = cls || "dim"; d.textContent = msg;
     $("log").appendChild(d);
+    while ($("log").children.length > 40) $("log").firstElementChild.remove();
     $("log").scrollTop = $("log").scrollHeight;
   }
   function clearResult() {
@@ -17,6 +18,7 @@
   }
   function ready() {
     $("pick").disabled = busy;
+    $("cancel").hidden = !busy;
     $("pw").disabled = busy; $("confirm").disabled = busy;
     $("enc").disabled = busy || !file || file.size > INPUT_MAX;
     $("dec").disabled = $("enc").disabled;
@@ -39,12 +41,16 @@
     if (!decrypt && pw !== $("confirm").value) { log("Password confirmation does not match.", "bad"); return; }
     busy = true; ready(); clearResult();
     log((decrypt ? "Decrypting" : "Encrypting") + " in a background worker...", "dim");
-    let worker = null;
+    let worker = null, timer = null, stopped = false;
     const t0 = performance.now();
     try {
+      cancel = () => { stopped = true; };
       const bytes = await chosen.arrayBuffer();
+      if (stopped) throw new Error("Operation cancelled. No download was produced.");
       worker = new Worker("worker.js");
       const result = await new Promise((resolve, reject) => {
+        cancel = () => { stopped = true; worker.terminate(); reject(new Error("Operation cancelled. No download was produced.")); };
+        timer = setTimeout(() => { worker.terminate(); reject(new Error("Operation timed out after 120 seconds. No download was produced.")); }, 120000);
         worker.onmessage = ({data}) => data.ok ? resolve(data.bytes) : reject(new Error(data.error));
         worker.onerror = () => reject(new Error("The encryption worker could not finish."));
         worker.postMessage({bytes, password: pw, decrypt}, [bytes]);
@@ -57,11 +63,13 @@
       log((decrypt ? "Decrypted" : "Encrypted") + " in " + Math.round(performance.now()-t0) + " ms, " + result.byteLength + " bytes out", "ok");
     } catch (e) { log(e.message || "Could not read the file.", "bad"); }
     finally {
+      clearTimeout(timer); cancel = null;
       if (worker) worker.terminate();
       $("pw").value = ""; $("confirm").value = "";
       busy = false; ready();
     }
   }
+  $("cancel").addEventListener("click", () => { if (cancel) cancel(); });
   $("enc").addEventListener("click", () => crypt(false));
   $("dec").addEventListener("click", () => crypt(true));
   log("Ready. File data stays in memory; password derivation runs in a worker.", "ok");
