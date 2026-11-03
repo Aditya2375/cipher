@@ -1,0 +1,3 @@
+# cipher
+Educational C ChaCha20-Poly1305 implementation with a browser-local WebAssembly demo. Not independently audited; no guarantee for real secrets.
+Source: https://github.com/Aditya2375/cipher
