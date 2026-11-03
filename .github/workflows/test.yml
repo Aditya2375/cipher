@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: make build/test-fuzz
+      - run: make build/test-fuzz build/cipher
       - name: mutated + random blobs (several seeds)
         run: |
           for seed in 1 2 3 4 5 20261103; do

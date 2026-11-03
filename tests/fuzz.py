@@ -22,7 +22,9 @@ valid = subprocess.run(
     ["/bin/sh", "-c",
      "printf 'the quick brown fox jumps over the lazy dog' > /tmp/cipher-fuzz-src && "
      "printf 'pw\\npw\\n' | CIPHER_KDF_ITER=1 build/cipher encrypt /tmp/cipher-fuzz-src /tmp/cipher-fuzz.cph && "
-     "cat /tmp/cipher-fuzz.cph"], capture_output=True).stdout
+     "cat /tmp/cipher-fuzz.cph"], capture_output=True, check=True).stdout
+if not valid.startswith(b"CIPH"):
+    sys.exit("fuzz setup broken: build/cipher did not produce a CIPH file")
 run(valid, "valid file decrypts without incident")
 for i in range(a.blobs):
     if i % 3 == 0:
