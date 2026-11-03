@@ -6,6 +6,10 @@
       content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; connect-src 'self'; worker-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Educational C cryptography demo: local file encryption with a cancellable WebAssembly worker. Not independently audited for real secrets.">
+<meta name="theme-color" content="#0d1117">
+<link rel="canonical" href="https://aditya2375.github.io/cipher/">
+<meta property="og:title" content="cipher / C cryptography lab"><meta property="og:description" content="Educational file encryption running locally in WebAssembly. No upload."><meta property="og:type" content="website"><meta property="og:url" content="https://aditya2375.github.io/cipher/">
 <title>cipher - password file encryption, live in your browser</title>
 <style>
   :root { --bg:#0d1117; --panel:#161b22; --line:#30363d; --fg:#e6edf3; --dim:#8b949e;
@@ -34,6 +38,9 @@
   .log .ok { color:var(--ok); } .log .bad { color:var(--bad); } .log .dim { color:var(--dim); }
   #dl { display:none; margin-top:10px; font-family:ui-monospace,Menlo,Consolas,monospace; }
   a { color:var(--a); }
+  input,button { max-width:100%; } .file,#dl { overflow-wrap:anywhere; }
+  button { min-height:44px; } :focus-visible { outline:2px solid var(--a); outline-offset:3px; }
+  @media(max-width:480px) { main,header { padding-left:16px;padding-right:16px; } input[type=password] { width:100%;min-width:0; } }
   footer { padding:0 24px 30px; color:var(--dim); font-size:13px; }
 </style>
 </head>
@@ -49,7 +56,7 @@
 <main>
   <div class="panel">
     <div class="row">
-      <input type="file" id="pick">
+      <input type="file" id="pick" aria-label="Choose a local file">
       <span class="file" id="fname">no file chosen (16 MB demo limit)</span>
     </div>
     <div class="row">
@@ -57,14 +64,17 @@
       <input type="password" id="confirm" aria-label="confirm password for encryption" placeholder="confirm for encryption" autocomplete="off">
       <button id="enc" disabled>encrypt</button>
       <button id="dec" disabled>decrypt</button>
+      <button id="cancel" hidden>cancel operation</button>
     </div>
     <a id="dl" href="#">result</a>
   </div>
-  <div class="log" id="log"></div>
+  <div class="log" id="log" role="status" aria-live="polite"></div>
 </main>
 <footer>
   Lost passwords are unrecoverable; a wrong password fails loudly, never silently.
-  A teaching build - see the README for deliberate simplifications.
+  A teaching build, not independently audited for protecting real secrets.
+  Keep your original until you verify a decrypted copy. Cancellation and a 120-second worker deadline leave no new download. Browser memory copies cannot be securely erased.
+  <a href="https://github.com/Aditya2375/cipher#deliberate-simplifications">Limits</a> / <a href="https://github.com/Aditya2375/cipher/issues">Report an issue</a>.
 </footer>
 <script src="app.js"></script>
 </body>
