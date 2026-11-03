@@ -52,7 +52,7 @@ The same `format.c` compiled to WebAssembly:
 [aditya2375.github.io/cipher](https://aditya2375.github.io/cipher/). Pick a
 file, type a password, encrypt or decrypt entirely in the browser - nothing
 is uploaded, there is no server. The demo caps plaintext at 16 MB (plus format overhead on decryption); the CLI has
-no such limit. Rebuild it with `sh wasm/build.sh` (emscripten), verify with
+no such limit. Browser work has a cancel button and 120-second deadline; no download is exposed on cancellation or failure. Logs retain at most 40 entries. Keep an original until a decrypted copy is verified. Rebuild it with `sh wasm/build.sh` (emscripten), verify with
 `node tests/wasm-smoke.js`.
 
 For fast local test fixtures only, `CIPHER_KDF_ITER` overrides encryption
