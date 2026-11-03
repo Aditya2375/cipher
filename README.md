@@ -3,7 +3,8 @@
 Password file encryption from scratch in C: ChaCha20-Poly1305 AEAD,
 PBKDF2-HMAC-SHA256 key derivation, a chunked tamper-evident file format,
 and not one line of someone else's crypto. Every primitive is validated
-against its published test vectors.
+against published test vectors. This is an educational implementation,
+not independently audited software for protecting real secrets.
 
 No dependencies beyond libc and an emscripten SDK for the web build.
 
@@ -40,8 +41,9 @@ chunk i: clen u32le | flags (bit0: final) | ciphertext | tag 16
 64 KB chunks are authenticated before their plaintext is released;
 only the final chunk may be short or empty; the final chunk must be the
 last bytes of the file. Truncation, reordering, splicing and bit flips
-all fail the same way: `authentication failed`, exit 1, and no partial
-output file is left behind. Encryption reads fresh randomness from
+all exit with an error and leave no partial
+output file behind. Existing output files and links are never overwritten;
+new output is owner-only (0600). Encryption reads fresh randomness from
 `/dev/urandom`; key material is zeroed after use.
 
 ## Browser demo
@@ -49,9 +51,14 @@ output file is left behind. Encryption reads fresh randomness from
 The same `format.c` compiled to WebAssembly:
 [aditya2375.github.io/cipher](https://aditya2375.github.io/cipher/). Pick a
 file, type a password, encrypt or decrypt entirely in the browser - nothing
-is uploaded, there is no server. The demo caps files at 16 MB; the CLI has
+is uploaded, there is no server. The demo caps plaintext at 16 MB (plus format overhead on decryption); the CLI has
 no such limit. Rebuild it with `sh wasm/build.sh` (emscripten), verify with
 `node tests/wasm-smoke.js`.
+
+For fast local test fixtures only, `CIPHER_KDF_ITER` overrides encryption
+iterations. Do not set it for any other use. Decryption accepts the file
+header's KDF work factor with a 10-million-iteration cap; a hostile file
+can still consume CPU within that bound.
 
 ## Deliberate simplifications
 
@@ -63,6 +70,10 @@ This is a teaching tool, not a replacement for age/gpg:
 - The password KDF is PBKDF2, not a memory-hard function (scrypt/argon2).
 - No key files, no public-key mode, no metadata beyond the header.
 - Files are encrypted with one password; changing it means re-encrypting.
+
+Passwords are limited to 254 UTF-8 bytes. The web demo uses a dedicated
+worker so password derivation does not freeze the page; it stores no files
+or passwords in browser storage. Browser strings cannot be reliably erased.
 
 ## Development
 
@@ -78,6 +89,6 @@ node tests/wasm-smoke.js   # 6 wasm smoke checks against the demo build
 Layout: `src/` the C core (crypto, AEAD, file format, CLI), `tests/`
 unit, integration and fuzz suites, `wasm/` + `docs/` the browser demo.
 
-24 unit checks, 8 integration checks, 6 wasm smoke checks, all green; CI
+24 unit checks, 14 integration checks, 6 wasm smoke checks and 5 worker checks, all green; CI
 runs every suite on every push and byte-compares the committed demo against
 a fresh emscripten build.

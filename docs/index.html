@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; connect-src 'self'; worker-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>cipher - password file encryption, live in your browser</title>
 <style>
@@ -41,7 +42,7 @@
   <h1>cipher</h1>
   <p class="sub">Encrypt a file with a password, right here. This page runs the same C code as
      the <code>cipher</code> command-line tool, compiled to WebAssembly: PBKDF2-HMAC-SHA256
-     (600,000 iterations) stretches your password, ChaCha20-Poly1305 authenticates every
+     (600,000 iterations) stretches the passphrase. ChaCha20-Poly1305 authenticates every
      64 KB chunk. The file never leaves your browser - there is no server.
      <a href="https://github.com/Aditya2375/cipher">source</a></p>
 </header>
@@ -52,7 +53,8 @@
       <span class="file" id="fname">no file chosen (16 MB demo limit)</span>
     </div>
     <div class="row">
-      <input type="password" id="pw" placeholder="password" autocomplete="off">
+      <input type="password" id="pw" aria-label="password" placeholder="password" autocomplete="off">
+      <input type="password" id="confirm" aria-label="confirm password for encryption" placeholder="confirm for encryption" autocomplete="off">
       <button id="enc" disabled>encrypt</button>
       <button id="dec" disabled>decrypt</button>
     </div>
@@ -64,7 +66,6 @@
   Lost passwords are unrecoverable; a wrong password fails loudly, never silently.
   A teaching build - see the README for deliberate simplifications.
 </footer>
-<script src="cipher.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

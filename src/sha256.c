@@ -1,3 +1,4 @@
+#include "wipe.h"
 #include "sha256.h"
 #include <string.h>
 
@@ -71,7 +72,7 @@ void cipher_sha256_final(CipherSha256 *c, unsigned char out[32]) {
         out[i*4+2] = (unsigned char)(c->h[i] >> 8);
         out[i*4+3] = (unsigned char)c->h[i];
     }
-    memset(c, 0, sizeof *c);
+    cipher_secure_zero(c, sizeof *c);
 }
 
 void cipher_sha256(const void *data, size_t len, unsigned char out[32]) {

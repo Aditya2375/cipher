@@ -8,7 +8,7 @@ fail() { echo "check-docs: $1" >&2; exit 1; }
 UNIT=$(./build/test-unit | tail -1 | grep -o '^[0-9]*')
 [ "$UNIT" = "24" ] || fail "unit checks: README says 24, binary says $UNIT"
 grep -q "24 unit checks" README.md || fail "README no longer says 28 unit checks"
-grep -q "8 integration checks" README.md || fail "README no longer says 8 integration checks"
+grep -q "14 integration checks" README.md || fail "README no longer says 14 integration checks"
 grep -q "6 wasm smoke checks" README.md || fail "README no longer says 6 wasm smoke checks"
 grep -q "16 MB" README.md || fail "README lost the demo size cap"
 grep -q "aditya2375.github.io/cipher" README.md || fail "README lost the live demo link"

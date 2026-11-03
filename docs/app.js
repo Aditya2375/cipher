@@ -1,98 +1,69 @@
-/* app.js - drives the in-page cipher wasm build: pick a file, type a
- * password, encrypt or decrypt entirely in the browser. */
+/* All file work stays on-device. No uploads, persistence or analytics. */
 (function () {
   "use strict";
-  const $ = (id) => document.getElementById(id);
+  const $ = id => document.getElementById(id);
   const MAX = 16 * 1024 * 1024;
-  let M = null;
-  let file = null;
-
+  const INPUT_MAX = MAX + 6000;
+  let file = null, busy = false, url = null;
   function log(msg, cls) {
     const d = document.createElement("div");
-    if (cls) d.className = cls;
-    d.textContent = msg;
-    const el = $("log");
-    el.appendChild(d);
-    el.scrollTop = el.scrollHeight;
+    d.className = cls || "dim"; d.textContent = msg;
+    $("log").appendChild(d);
+    $("log").scrollTop = $("log").scrollHeight;
   }
-
+  function clearResult() {
+    if (url) URL.revokeObjectURL(url);
+    url = null; $("dl").removeAttribute("href"); $("dl").style.display = "none";
+  }
   function ready() {
-    const on = M && file && file.size <= MAX;
-    $("enc").disabled = !on;
-    $("dec").disabled = !on;
+    $("pick").disabled = busy;
+    $("pw").disabled = busy; $("confirm").disabled = busy;
+    $("enc").disabled = busy || !file || file.size > INPUT_MAX;
+    $("dec").disabled = $("enc").disabled;
   }
-
-  createCipher().then((m) => {
-    M = m;
-    log("wasm module ready: the same format.c the CLI runs", "ok");
-    ready();
-  }).catch(() => log("failed to load the wasm module", "bad"));
-
-  $("pick").addEventListener("change", (e) => {
-    file = e.target.files[0] || null;
-    $("dl").style.display = "none";
-    if (!file) {
-      $("fname").textContent = "no file chosen (16 MB demo limit)";
-    } else if (file.size > MAX) {
-      $("fname").textContent = file.name + " is over the 16 MB demo limit";
-      log("file too large for the browser demo; the CLI has no such limit", "bad");
-    } else {
-      $("fname").textContent = file.name + " (" + file.size + " bytes)";
-    }
+  $("pick").addEventListener("change", e => {
+    file = e.target.files[0] || null; clearResult();
+    $("fname").textContent = !file ? "no file chosen (16 MB demo limit)" :
+      file.name + " (" + file.size + " bytes)" + (file.size > INPUT_MAX ? " - too large" : "");
     ready();
   });
-
-  function outName(name, decrypt) {
-    if (decrypt)
-      return name.endsWith(".cph") ? name.slice(0, -4) : name + ".dec";
-    return name + ".cph";
-  }
-
-  function crypt(decrypt) {
+  async function crypt(decrypt) {
+    if (busy || !file || file.size > INPUT_MAX) return;
+    if (!decrypt && file.size > MAX) { log("Plaintext exceeds the 16 MB demo limit.", "bad"); return; }
+    const chosen = file;
     const pw = $("pw").value;
-    if (!pw) {
-      log("enter a password first", "bad");
-      return;
-    }
-    $("enc").disabled = true;
-    $("dec").disabled = true;
-    file.arrayBuffer().then((buf) => {
-      const inlen = buf.byteLength;
-      const inp = M._malloc(inlen || 1);
-      M.HEAPU8.set(new Uint8Array(buf), inp);
-      const cap = decrypt
-        ? inlen
-        : inlen + M.ccall("w_overhead", "number", ["number"], [inlen]);
-      const outp = M._malloc(cap || 1);
-      const t0 = performance.now();
-      const n = M.ccall("w_crypt", "number",
-        ["number", "number", "string", "number", "number", "number"],
-        [inp, inlen, pw, decrypt, outp, cap]);
-      M.HEAPU8.fill(0, inp, inp + inlen);
-      M._free(inp);
-      if (n < 0) {
-        M._free(outp);
-        log(decrypt
-          ? "decryption failed: wrong password or tampered file"
-          : "encryption failed", "bad");
-        ready();
-        return;
-      }
-      const res = M.HEAPU8.slice(outp, outp + n);
-      M.HEAPU8.fill(0, outp, outp + n);
-      M._free(outp);
-      const a = $("dl");
-      if (a.href && a.href.startsWith("blob:")) URL.revokeObjectURL(a.href);
-      a.href = URL.createObjectURL(new Blob([res], { type: "application/octet-stream" }));
-      a.download = outName(file.name, decrypt);
-      a.textContent = "download " + a.download + " (" + n + " bytes)";
+    const pass = new TextEncoder().encode(pw);
+    const valid = pass.length > 0 && pass.length <= 254 && !pass.includes(0);
+    pass.fill(0);
+    if (!valid) { log("Use a password of 1 to 254 UTF-8 bytes, without NUL characters.", "bad"); return; }
+    if (!decrypt && pw !== $("confirm").value) { log("Password confirmation does not match.", "bad"); return; }
+    busy = true; ready(); clearResult();
+    log((decrypt ? "Decrypting" : "Encrypting") + " in a background worker...", "dim");
+    let worker = null;
+    const t0 = performance.now();
+    try {
+      const bytes = await chosen.arrayBuffer();
+      worker = new Worker("worker.js");
+      const result = await new Promise((resolve, reject) => {
+        worker.onmessage = ({data}) => data.ok ? resolve(data.bytes) : reject(new Error(data.error));
+        worker.onerror = () => reject(new Error("The encryption worker could not finish."));
+        worker.postMessage({bytes, password: pw, decrypt}, [bytes]);
+      });
+      const name = decrypt ? (chosen.name.endsWith(".cph") && chosen.name.length > 4 ? chosen.name.slice(0,-4) : chosen.name + ".dec") : chosen.name + ".cph";
+      url = URL.createObjectURL(new Blob([result], {type: "application/octet-stream"}));
+      const a = $("dl"); a.href = url; a.download = name;
+      a.textContent = "download " + name + " (" + result.byteLength + " bytes)";
       a.style.display = "inline";
-      log((decrypt ? "decrypted" : "encrypted") + " in " +
-          Math.round(performance.now() - t0) + " ms, " + n + " bytes out", "ok");
-      ready();
-    });
+      log((decrypt ? "Decrypted" : "Encrypted") + " in " + Math.round(performance.now()-t0) + " ms, " + result.byteLength + " bytes out", "ok");
+    } catch (e) { log(e.message || "Could not read the file.", "bad"); }
+    finally {
+      if (worker) worker.terminate();
+      $("pw").value = ""; $("confirm").value = "";
+      busy = false; ready();
+    }
   }
-
   $("enc").addEventListener("click", () => crypt(false));
   $("dec").addEventListener("click", () => crypt(true));
+  log("Ready. File data stays in memory; password derivation runs in a worker.", "ok");
+  ready();
 })();

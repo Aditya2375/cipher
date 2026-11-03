@@ -1,3 +1,4 @@
+#include "wipe.h"
 #include "chacha20.h"
 #include <string.h>
 
@@ -53,7 +54,7 @@ void cipher_chacha20_xor(CipherChaCha20 *c, const unsigned char *in,
             }
             c->st[12]++;
             c->n = 0;
-            memset(b, 0, sizeof b);
+            cipher_secure_zero(b, sizeof b);
         }
         size_t take = 64 - c->n < len ? 64 - c->n : len;
         for (size_t i = 0; i < take; i++) out[i] = in[i] ^ c->ks[c->n + i];
@@ -68,5 +69,5 @@ void cipher_chacha20(const unsigned char key[32], const unsigned char nonce[12],
     CipherChaCha20 c;
     cipher_chacha20_init(&c, key, nonce, counter);
     cipher_chacha20_xor(&c, in, out, len);
-    memset(&c, 0, sizeof c);
+    cipher_secure_zero(&c, sizeof c);
 }

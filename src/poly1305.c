@@ -1,3 +1,4 @@
+#include "wipe.h"
 #include "poly1305.h"
 #include <string.h>
 #include <stdint.h>
@@ -92,5 +93,5 @@ void cipher_poly1305_final(CipherPoly1305 *c, unsigned char tag[16]) {
         tag[i*4+2] = (unsigned char)(w[i] >> 16);
         tag[i*4+3] = (unsigned char)(w[i] >> 24);
     }
-    memset(c, 0, sizeof *c);
+    cipher_secure_zero(c, sizeof *c);
 }

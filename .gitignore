@@ -1,2 +1,8 @@
 build/
 *.o
+.env*
+*.keystore
+*.jks
+local.properties
+*service-account*.json
+.security-reports/

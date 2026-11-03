@@ -1,3 +1,4 @@
+#include "wipe.h"
 #include "hmac.h"
 #include "sha256.h"
 #include <string.h>
@@ -6,7 +7,7 @@ void cipher_hmac_sha256(const unsigned char *key, size_t klen,
                         const unsigned char *msg, size_t mlen,
                         unsigned char out[32]) {
     unsigned char k[64], inner[32];
-    memset(k, 0, sizeof k);
+    cipher_secure_zero(k, sizeof k);
     if (klen > 64)
         cipher_sha256(key, klen, k);
     else
@@ -23,7 +24,7 @@ void cipher_hmac_sha256(const unsigned char *key, size_t klen,
     cipher_sha256_update(&c, pad, 64);
     cipher_sha256_update(&c, inner, 32);
     cipher_sha256_final(&c, out);
-    memset(k, 0, sizeof k);
-    memset(pad, 0, sizeof pad);
-    memset(inner, 0, sizeof inner);
+    cipher_secure_zero(k, sizeof k);
+    cipher_secure_zero(pad, sizeof pad);
+    cipher_secure_zero(inner, sizeof inner);
 }

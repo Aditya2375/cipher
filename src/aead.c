@@ -1,3 +1,4 @@
+#include "wipe.h"
 #include "aead.h"
 #include "chacha20.h"
 #include "poly1305.h"
@@ -29,7 +30,7 @@ void cipher_aead_seal(const unsigned char key[32], const unsigned char nonce[12]
     cipher_chacha20(key, nonce, 0, otk, otk, 64);
     cipher_chacha20(key, nonce, 1, pt, ct, plen);
     mac(otk, aad, alen, ct, plen, tag);
-    memset(otk, 0, sizeof otk);
+    cipher_secure_zero(otk, sizeof otk);
 }
 
 int cipher_aead_open(const unsigned char key[32], const unsigned char nonce[12],
@@ -40,8 +41,8 @@ int cipher_aead_open(const unsigned char key[32], const unsigned char nonce[12],
     cipher_chacha20(key, nonce, 0, otk, otk, 64);
     mac(otk, aad, alen, ct, clen, want);
     int ok = cipher_ct_eq(tag, want, 16);
-    memset(otk, 0, sizeof otk);
-    memset(want, 0, sizeof want);
+    cipher_secure_zero(otk, sizeof otk);
+    cipher_secure_zero(want, sizeof want);
     if (!ok)
         return -1;
     cipher_chacha20(key, nonce, 1, ct, pt, clen);

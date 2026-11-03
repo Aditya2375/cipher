@@ -143,7 +143,7 @@ int cipher_crypt_file(FILE *in, FILE *out, const char *password, int decrypt) {
             if (fwrite(pt, 1, clen, out) != clen)
                 goto write_fail;
             if (final) {
-                if (fgetc(in) != EOF) {
+                if (fgetc(in) != EOF || ferror(in)) {
                     fprintf(stderr, "trailing data after the final chunk\n");
                     goto out;
                 }

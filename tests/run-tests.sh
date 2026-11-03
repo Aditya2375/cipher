@@ -54,4 +54,21 @@ fi
 printf 'a\nb\n' | $BIN encrypt $T/msg.txt $T/mismatch.cph 2>/dev/null && die "mismatched passwords accepted"
 [ ! -e $T/mismatch.cph ] && ok "mismatched password confirmation refused" || die "mismatch left output"
 
+# An output destination must never overwrite a file or follow a link.
+printf 'keep me' > "$T/keep"
+if printf 'pw\npw\n' | $BIN encrypt "$T/msg.txt" "$T/keep" 2>/dev/null; then die "overwrote output"; fi
+[ "$(cat "$T/keep")" = "keep me" ] && ok "existing output preserved" || die "output modified"
+ln -s "$T/msg.txt" "$T/link"
+if printf 'pw\npw\n' | $BIN encrypt "$T/msg.txt" "$T/link" 2>/dev/null; then die "followed symlink"; fi
+[ -L "$T/link" ] && ok "symlink output refused" || die "link removed"
+ln "$T/msg.txt" "$T/hard"
+if printf 'pw\npw\n' | $BIN encrypt "$T/msg.txt" "$T/hard" 2>/dev/null; then die "followed hard link"; fi
+[ "$(cat "$T/hard")" = "attack at dawn" ] && ok "hard-link output refused" || die "input destroyed"
+[ "$(stat -c %a "$T/msg.out")" = 600 ] && ok "plaintext output is owner-only" || die "plaintext permissions"
+python3 -c 'print("x"*300); print("x"*300)' | $BIN encrypt "$T/msg.txt" "$T/long" 2>/dev/null && die "long password accepted"
+[ ! -e "$T/long" ] && ok "overlong password rejected, not truncated" || die "password output left"
+head -c 65536 /dev/urandom > "$T/exact"
+printf 'pw\npw\n' | $BIN encrypt "$T/exact" >/dev/null
+printf 'pw\n' | $BIN decrypt "$T/exact.cph" "$T/exact.out" >/dev/null
+cmp "$T/exact" "$T/exact.out" && ok "exact chunk boundary round trip" || die "boundary failed"
 echo "all $PASS integration checks passed"

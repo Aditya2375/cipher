@@ -1,3 +1,4 @@
+#include "wipe.h"
 #include "pbkdf2.h"
 #include "hmac.h"
 #include <string.h>
@@ -24,7 +25,7 @@ void cipher_pbkdf2(const unsigned char *pass, size_t plen,
         out += take;
         out_len -= take;
     }
-    memset(block, 0, sizeof block);
-    memset(u, 0, 32);
-    memset(t, 0, 32);
+    cipher_secure_zero(block, sizeof block);
+    cipher_secure_zero(u, 32);
+    cipher_secure_zero(t, 32);
 }

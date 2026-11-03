@@ -16,15 +16,21 @@ def run(blob, label):
         sys.stderr.write("fuzz failure (%s): rc=%d\n%s\n" % (label, r.returncode, r.stderr[:400]))
         sys.exit(1)
 
-# seeds: a real encrypted file plus structure-ish blobs
-subprocess.run(["make", "-s", "build/test-fuzz"], check=True)
-valid = subprocess.run(
-    ["/bin/sh", "-c",
-     "printf 'the quick brown fox jumps over the lazy dog' > /tmp/cipher-fuzz-src && "
-     "printf 'pw\\npw\\n' | CIPHER_KDF_ITER=1 build/cipher encrypt /tmp/cipher-fuzz-src /tmp/cipher-fuzz.cph && "
-     "cat /tmp/cipher-fuzz.cph"], capture_output=True, check=True).stdout
+# Seed with a real encrypted file in a private scratch directory.
+import tempfile
+subprocess.run(["make", "-s", "build/test-fuzz", "build/cipher"], check=True)
+with tempfile.TemporaryDirectory(prefix="cipher-fuzz-") as td:
+    source = os.path.join(td, "source")
+    target = os.path.join(td, "encrypted")
+    with open(source, "wb") as f:
+        f.write(bytes(range(256)) * 512)
+    env = dict(os.environ, CIPHER_KDF_ITER="1")
+    subprocess.run(["build/cipher", "encrypt", source, target], input=b"pw\npw\n",
+                   capture_output=True, check=True, env=env)
+    with open(target, "rb") as f:
+        valid = f.read()
 if not valid.startswith(b"CIPH"):
-    sys.exit("fuzz setup broken: build/cipher did not produce a CIPH file")
+    sys.exit("fuzz setup broken: expected a CIPH container")
 run(valid, "valid file decrypts without incident")
 for i in range(a.blobs):
     if i % 3 == 0:

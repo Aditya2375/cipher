@@ -15,53 +15,56 @@ static void wipe(void *p, size_t n) {
     while (n--) *v++ = 0;
 }
 
+static int read_line(char *out, size_t cap) {
+    if (!fgets(out, (int)cap, stdin)) return -1;
+    size_t n = strlen(out);
+    if (n && out[n-1] != '\n' && !feof(stdin)) {
+        int c;
+        while ((c = getchar()) != '\n' && c != EOF) {}
+        fprintf(stderr, "password too long (maximum 254 bytes)\n");
+        return -1;
+    }
+    while (n && (out[n-1] == '\n' || out[n-1] == '\r')) out[--n] = 0;
+    return n <= 254 ? 0 : -1;
+}
+
 static int read_password(const char *prompt1, const char *prompt2,
                          char *out, size_t cap) {
     struct termios old, no;
-    int have_tty = isatty(0);
+    int have_tty = isatty(0), rc = -1;
+    char again[256] = {0};
     if (have_tty) {
-        tcgetattr(0, &old);
+        if (tcgetattr(0, &old) != 0) return -1;
         no = old;
         no.c_lflag &= ~(unsigned)ECHO;
         fputs(prompt1, stderr);
-        tcsetattr(0, TCSANOW, &no);
+        if (tcsetattr(0, TCSANOW, &no) != 0) return -1;
     }
-    int rc = -1;
-    if (!fgets(out, (int)cap, stdin))
-        goto done;
-    if (have_tty) {
-        tcsetattr(0, TCSANOW, &old);
-        fputc('\n', stderr);
-        fputs(prompt2, stderr);
-        tcsetattr(0, TCSANOW, &no);
-    }
-    size_t l = strlen(out);
-    while (l && (out[l-1] == '\n' || out[l-1] == '\r')) out[--l] = 0;
+    if (read_line(out, cap) != 0) goto done;
     if (prompt2) {
-        char again[256];
-        if (!fgets(again, (int)cap, stdin))
-            goto done;
-        size_t al = strlen(again);
-        while (al && (again[al-1] == '\n' || again[al-1] == '\r')) again[--al] = 0;
+        if (have_tty) { fputc('\n', stderr); fputs(prompt2, stderr); }
+        if (read_line(again, sizeof again) != 0) goto done;
         if (strcmp(out, again) != 0) {
-            wipe(again, sizeof again);
             fprintf(stderr, "passwords do not match\n");
             goto done;
         }
-        wipe(again, sizeof again);
     }
     rc = 0;
 done:
-    if (have_tty)
+    wipe(again, sizeof again);
+    if (have_tty) {
         tcsetattr(0, TCSANOW, &old);
+        fputc('\n', stderr);
+    }
     return rc;
 }
 
 static int run(const char *in_path, const char *out_path, int decrypt) {
-    char password[256];
+    char password[256] = {0};
     if (read_password(decrypt ? "password: " : "new password: ",
                       decrypt ? NULL : "confirm: ", password, sizeof password) != 0) {
         fprintf(stderr, "could not read the password\n");
+        wipe(password, sizeof password);
         return 1;
     }
     if (!*password) {
@@ -71,7 +74,12 @@ static int run(const char *in_path, const char *out_path, int decrypt) {
     }
     FILE *in = fopen(in_path, "rb");
     if (!in) { perror(in_path); wipe(password, sizeof password); return 1; }
-    FILE *out = fopen(out_path, "wb");
+    /* Never follow a symlink, truncate another file, or expose plaintext
+     * to other local users. Exclusive creation also rejects hard links. */
+    int fd = open(out_path, O_WRONLY | O_CREAT | O_EXCL, 0600);
+    if (fd < 0) { perror(out_path); fclose(in); wipe(password, sizeof password); return 1; }
+    FILE *out = fdopen(fd, "wb");
+    if (!out) { close(fd); remove(out_path); }
     if (!out) { perror(out_path); fclose(in); wipe(password, sizeof password); return 1; }
     int rc = cipher_crypt_file(in, out, password, decrypt);
     fclose(in);
