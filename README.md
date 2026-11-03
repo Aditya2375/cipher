@@ -20,8 +20,7 @@ When stdin is not a terminal the password is read from stdin once
 
 ## How it works
 
-**Primitives** (`src/`): SHA-256 (FIPS 180-4), HMAC (RFC 2104), HKDF
-(RFC 5869), PBKDF2-HMAC-SHA256 (RFC 8018), ChaCha20 and Poly1305
+**Primitives** (`src/`): SHA-256 (FIPS 180-4), HMAC (RFC 2104), PBKDF2-HMAC-SHA256 (RFC 8018), ChaCha20 and Poly1305
 (RFC 8439), and the ChaCha20-Poly1305 AEAD construction. Poly1305 uses
 five 26-bit limbs so every product fits in 64 bits; tags are compared
 in constant time.
@@ -45,6 +44,15 @@ all fail the same way: `authentication failed`, exit 1, and no partial
 output file is left behind. Encryption reads fresh randomness from
 `/dev/urandom`; key material is zeroed after use.
 
+## Browser demo
+
+The same `format.c` compiled to WebAssembly:
+[aditya2375.github.io/cipher](https://aditya2375.github.io/cipher/). Pick a
+file, type a password, encrypt or decrypt entirely in the browser - nothing
+is uploaded, there is no server. The demo caps files at 16 MB; the CLI has
+no such limit. Rebuild it with `sh wasm/build.sh` (emscripten), verify with
+`node tests/wasm-smoke.js`.
+
 ## Deliberate simplifications
 
 This is a teaching tool, not a replacement for age/gpg:
@@ -59,15 +67,17 @@ This is a teaching tool, not a replacement for age/gpg:
 ## Development
 
 ```sh
-make test            # 28 unit checks: every RFC vector plus tamper cases
+make test            # 24 unit checks: every RFC vector plus tamper cases
 make sanitize        # the same under ASan/UBSan, plus a fuzz pass
 sh tests/run-tests.sh   # CLI end-to-end: round trips, wrong password,
                         # tamper, truncation, trailing data, confirmation
 python3 tests/fuzz.py   # mutated + random blobs at the parsers
+node tests/wasm-smoke.js   # 6 wasm smoke checks against the demo build
 ```
 
 Layout: `src/` the C core (crypto, AEAD, file format, CLI), `tests/`
 unit, integration and fuzz suites, `wasm/` + `docs/` the browser demo.
 
-28 unit checks, 8 integration checks, all green; CI runs every suite on
-every push.
+24 unit checks, 8 integration checks, 6 wasm smoke checks, all green; CI
+runs every suite on every push and byte-compares the committed demo against
+a fresh emscripten build.

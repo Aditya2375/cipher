@@ -6,9 +6,14 @@ cd "$(dirname "$0")/.."
 fail() { echo "check-docs: $1" >&2; exit 1; }
 
 UNIT=$(./build/test-unit | tail -1 | grep -o '^[0-9]*')
-[ "$UNIT" = "28" ] || fail "unit checks: README says 28, binary says $UNIT"
-grep -q "28 unit checks" README.md || fail "README no longer says 28 unit checks"
+[ "$UNIT" = "24" ] || fail "unit checks: README says 24, binary says $UNIT"
+grep -q "24 unit checks" README.md || fail "README no longer says 28 unit checks"
 grep -q "8 integration checks" README.md || fail "README no longer says 8 integration checks"
+grep -q "6 wasm smoke checks" README.md || fail "README no longer says 6 wasm smoke checks"
+grep -q "16 MB" README.md || fail "README lost the demo size cap"
+grep -q "aditya2375.github.io/cipher" README.md || fail "README lost the live demo link"
+[ -s docs/cipher.js ] || fail "docs/cipher.js missing - run sh wasm/build.sh"
+[ -s docs/cipher.wasm ] || fail "docs/cipher.wasm missing - run sh wasm/build.sh"
 
 for pin in "CIPHER_CHUNK (64 \* 1024)" "CIPHER_ITER_DEFAULT 600000" \
            "CIPHER_ITER_MAX 10000000u" "CIPHER_HEADER_LEN 38"; do

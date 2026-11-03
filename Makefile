@@ -2,7 +2,7 @@ CC ?= cc
 WARN := -Wall -Wextra -Werror
 CFLAGS ?= -O2 -g
 CFLAGS += $(WARN) -Isrc
-CORE := src/sha256.c src/hmac.c src/hkdf.c src/pbkdf2.c src/chacha20.c src/poly1305.c src/aead.c src/format.c
+CORE := src/sha256.c src/hmac.c src/pbkdf2.c src/chacha20.c src/poly1305.c src/aead.c src/format.c
 HDRS := $(wildcard src/*.h)
 
 all: build/cipher build/test-unit

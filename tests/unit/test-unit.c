@@ -2,7 +2,6 @@
  * primitive. Prints one line per check and a final "N checks passed". */
 #include "sha256.h"
 #include "hmac.h"
-#include "hkdf.h"
 #include "pbkdf2.h"
 #include "chacha20.h"
 #include "poly1305.h"
@@ -81,22 +80,6 @@ int main(void) {
     hex(d, 32, h);
     CHECK(!strcmp(h, "60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54"),
           "hmac-sha256 long key (rfc4231 #6)");
-
-    /* ---- HKDF-SHA256: RFC 5869 test case 1 ---- */
-    {
-        unsigned char ikm[22], salt[13], info[10], okm[42];
-        memset(ikm, 0x0b, 22);
-        unhex("000102030405060708090a0b0c", salt, 13);
-        unhex("f0f1f2f3f4f5f6f7f8f9", info, 10);
-        CHECK(cipher_hkdf(salt, 13, ikm, 22, info, 10, okm, 42) == 0, "hkdf runs");
-        hex(okm, 42, h);
-        CHECK(!strcmp(h, "3cb25f25faacd57a90434f64d0362f2a"
-                         "2d2d0a90cf1a5a4c5db02d56ecc4c5bf"
-                         "34007208d5b887185865"), "hkdf rfc5869 #1");
-        CHECK(cipher_hkdf(salt, 13, ikm, 22, info, 10, okm, 0) == -1, "hkdf rejects zero length");
-        CHECK(cipher_hkdf(salt, 13, ikm, 22, info, 10, okm, 255 * 32 + 1) == -1,
-              "hkdf rejects oversized length");
-    }
 
     /* ---- PBKDF2-HMAC-SHA256: well-known vectors ---- */
     cipher_pbkdf2((const unsigned char *)"password", 8,

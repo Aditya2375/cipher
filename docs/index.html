@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cipher - password file encryption, live in your browser</title>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --line:#30363d; --fg:#e6edf3; --dim:#8b949e;
+          --a:#58a6ff; --ok:#3fb950; --bad:#f85149; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font:14px/1.5 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  header { padding:20px 24px 8px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  .sub { color:var(--dim); max-width:760px; }
+  .sub code { color:var(--fg); }
+  main { padding:16px 24px 40px; max-width:860px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px;
+           padding:16px; margin-bottom:16px; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:8px 0; }
+  button { background:#21262d; color:var(--fg); border:1px solid var(--line);
+           border-radius:6px; padding:6px 14px; font:inherit; cursor:pointer; }
+  button:hover:not(:disabled) { border-color:var(--dim); }
+  button:disabled { opacity:.45; cursor:default; }
+  input[type=password] { background:#0d1117; border:1px solid var(--line); color:var(--fg);
+           border-radius:6px; padding:6px 8px; font:inherit; min-width:240px; }
+  .file { color:var(--dim); font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px; }
+  .log { background:#0d1117; border:1px solid var(--line); border-radius:10px;
+         padding:12px 16px; min-height:60px; max-height:180px; overflow-y:auto;
+         font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px; }
+  .log .ok { color:var(--ok); } .log .bad { color:var(--bad); } .log .dim { color:var(--dim); }
+  #dl { display:none; margin-top:10px; font-family:ui-monospace,Menlo,Consolas,monospace; }
+  a { color:var(--a); }
+  footer { padding:0 24px 30px; color:var(--dim); font-size:13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>cipher</h1>
+  <p class="sub">Encrypt a file with a password, right here. This page runs the same C code as
+     the <code>cipher</code> command-line tool, compiled to WebAssembly: PBKDF2-HMAC-SHA256
+     (600,000 iterations) stretches your password, ChaCha20-Poly1305 authenticates every
+     64 KB chunk. The file never leaves your browser - there is no server.
+     <a href="https://github.com/Aditya2375/cipher">source</a></p>
+</header>
+<main>
+  <div class="panel">
+    <div class="row">
+      <input type="file" id="pick">
+      <span class="file" id="fname">no file chosen (16 MB demo limit)</span>
+    </div>
+    <div class="row">
+      <input type="password" id="pw" placeholder="password" autocomplete="off">
+      <button id="enc" disabled>encrypt</button>
+      <button id="dec" disabled>decrypt</button>
+    </div>
+    <a id="dl" href="#">result</a>
+  </div>
+  <div class="log" id="log"></div>
+</main>
+<footer>
+  Lost passwords are unrecoverable; a wrong password fails loudly, never silently.
+  A teaching build - see the README for deliberate simplifications.
+</footer>
+<script src="cipher.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
